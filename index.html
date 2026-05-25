@@ -92,6 +92,7 @@
       </div>
       
       <div class="space-y-4">
+        <!-- POLE API JEST TERAZ ZAWSZE WIDOCZNE -->
         <div id="api-url-group" class="space-y-1">
           <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Google Apps Script URL</label>
           <input type="text" id="login-api-url" placeholder="Wklej link do API..." class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500 transition-colors">
@@ -388,16 +389,17 @@
       window.addEventListener('online', updateNetworkStatus);
       window.addEventListener('offline', updateNetworkStatus);
 
-      // Inicjalizacja formularza logowania
-      if (!state.apiUrl) {
-        document.getElementById('api-url-group').classList.remove('hidden');
-      } else {
-        document.getElementById('api-url-group').classList.add('hidden');
+      // ZAWSZE POKAZUJ POLE API URL. Zapobiega zablokowaniu aplikacji, gdy stary link w localStorage przestał działać.
+      document.getElementById('api-url-group').classList.remove('hidden');
+      if (state.apiUrl) {
         document.getElementById('login-api-url').value = state.apiUrl;
       }
 
-      if (state.apiUrl) {
-        fetchData(true, true); // initial boot
+      // Jeżeli mamy już i PIN i URL, próbujemy zalogować automatycznie w tle
+      if (state.apiUrl && state.pin) {
+        document.getElementById('login-pin').value = state.pin;
+        document.getElementById('login-modal').classList.add('hidden'); // ukrywamy na czas ładowania
+        fetchData(true, true); 
       } else {
         document.getElementById('login-modal').classList.remove('hidden');
       }
@@ -410,6 +412,10 @@
       const pinInput = document.getElementById('login-pin').value.trim();
       
       if (!urlInput) { showStatusMessage("Podaj link do API", "error"); return; }
+      if (!urlInput.startsWith('https://script.google.com/')) { 
+          showStatusMessage("Link API musi zaczynać się od https://script.google.com/", "error"); 
+          return; 
+      }
       if (!pinInput) { showStatusMessage("Podaj PIN", "error"); return; }
       
       state.apiUrl = urlInput;
@@ -417,6 +423,7 @@
       localStorage.setItem('pv_cable_tracker_api_url', urlInput);
       localStorage.setItem('pv_cable_tracker_pin', pinInput);
       
+      document.getElementById('login-modal').classList.add('hidden');
       fetchData(true, true);
     }
 
@@ -470,8 +477,6 @@
       
       closeSettingsModal();
       
-      // Przywróć widoczność pola API w loginie jeśli potrzeba, ale zazwyczaj po prostu logujemy sie ponownie
-      document.getElementById('api-url-group').classList.add('hidden');
       document.getElementById('login-pin').value = '';
       document.getElementById('login-modal').classList.remove('hidden');
     }
@@ -1634,7 +1639,7 @@
 
     function fetchData(showBlocker = false, isLoginContext = false) {
       if (!state.apiUrl) return;
-      if (showBlocker) showLoading(true, "Pobieranie bazy danych...");
+      if (showBlocker) showLoading(true, isLoginContext ? "Logowanie i pobieranie danych..." : "Pobieranie bazy danych...");
 
       fetch(state.apiUrl + "?action=getMeters")
         .then(res => res.json())
@@ -1656,11 +1661,16 @@
                  renderApp();
                }
             }
-          } else { showStatusMessage("Błąd pobierania danych", "error"); }
+          } else { 
+            showStatusMessage("Błąd pobierania danych z API", "error"); 
+            if (isLoginContext) document.getElementById('login-modal').classList.remove('hidden');
+          }
         })
-        .catch(() => {
-            showStatusMessage("Pracujesz offline.", "error");
-            if(isLoginContext) document.getElementById('login-modal').classList.remove('hidden');
+        .catch((e) => {
+            console.error("Fetch Error:", e);
+            showStatusMessage("Błąd połączenia (Sprawdź link API lub uprawnienia w Google Script)", "error");
+            if (isLoginContext) document.getElementById('login-modal').classList.remove('hidden');
+            updateNetworkStatus(false);
         })
         .finally(() => { if (showBlocker) showLoading(false); });
     }
