@@ -188,7 +188,7 @@
 
     <!-- SCREEN 3: MONTER INPUT FORM -->
     <section id="view-step-monter-form" class="fade-in space-y-4 hidden">
-      <div class="flex items-center justify-between flex-wrap gap-3 bg-zinc-900 border border-zinc-800/80 p-3 rounded-2xl shadow-md">
+      <div class="sticky top-[52px] z-30 flex items-center justify-between flex-wrap gap-3 bg-zinc-900/95 backdrop-blur-md border border-zinc-800/80 p-3 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
         <button onclick="handleBackFromForm()" class="touch-target flex items-center justify-center text-zinc-300 hover:text-emerald-400 text-lg font-black transition-colors w-10 h-10 bg-zinc-950 border border-zinc-800 rounded-xl" title="Wróć">
           &lt;
         </button>
@@ -1548,6 +1548,39 @@
     }
 
     function handleBackFromForm() {
+      // Jeśli jest odliczanie do zapisu, wymuś go natychmiast
+      if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = null;
+        if (!isSaving) {
+          silentSubmitMetersToServer();
+        } else {
+          hasPendingSave = true;
+        }
+      }
+      
+      // Blokada i ekran ładowania jeśli zapis wciąż trwa (kluczowe przy szybkim klikaniu/wyjściu)
+      if (isSaving || hasPendingSave) {
+        showLoading(true, "Zapisywanie przed wyjściem...");
+        const waitInterval = setInterval(() => {
+          if (!isSaving && hasPendingSave) {
+            if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+            hasPendingSave = false;
+            silentSubmitMetersToServer();
+          } 
+          else if (!isSaving && !hasPendingSave) {
+            clearInterval(waitInterval);
+            showLoading(false);
+            proceedBack();
+          }
+        }, 150);
+        return;
+      }
+      
+      proceedBack();
+    }
+
+    function proceedBack() {
       state.selectedInverter = ""; state.selectedTrafo = "";
       renderApp();
     }
@@ -1717,39 +1750,15 @@
     function closeSettingsModal() { document.getElementById('settings-modal').classList.add('hidden'); }
     
     function saveApiUrl() {
-      const newUrl = document.getElementById('apiUrlInput').value.trim();
-      if (!newUrl.startsWith('https://script.google.com/')) {
-        showCustomModal("Błąd", "To nie wygląda na poprawny link Google Apps Script.");
-        return;
-      }
-      
-      // 1. Wyczyść stary klucz całkowicie
-      localStorage.removeItem('google_script_url');
-      
-      // 2. Zapisz nowy
-      localStorage.setItem('google_script_url', newUrl);
-      
-      // 3. Wymuś odświeżenie konfiguracji w aplikacji
-      state.apiUrl = newUrl;
-      
-      showCustomModal("Sukces", "Link został zaktualizowany. Aplikacja się przeładuje...", () => {
-        window.location.reload(); // Wymuszenie załadowania nowej konfiguracji
-      });
+      const inputVal = document.getElementById('input-api-url').value.trim();
+      if (!inputVal) return;
+      localStorage.removeItem('pv_cable_tracker_api_url'); // Całkowite czyszczenie starego adresu
+      localStorage.setItem('pv_cable_tracker_api_url', inputVal); // Zapis nowego adresu
+      state.apiUrl = inputVal;
+      document.getElementById('api-url-editor').classList.add('hidden');
+      closeSettingsModal();
+      window.location.reload(); // Twardy reset dla WebView i GitHub Pages
     }
-
-// Upewnij się, że przy starcie pobierasz link z localStorage:
-    function loadConfig() {
-      const savedUrl = localStorage.getItem('google_script_url');
-      if (savedUrl) {
-        state.apiUrl = savedUrl;
-      }
-    }
-    
-    // Wywołaj loadConfig przy starcie aplikacji (wewnątrz window.onload)
-    window.onload = () => {
-       loadConfig();
-       renderApp();
-    };
     
     function showStatusMessage(text, type = "success") {
       const banner = document.createElement('div');
