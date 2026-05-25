@@ -1717,14 +1717,39 @@
     function closeSettingsModal() { document.getElementById('settings-modal').classList.add('hidden'); }
     
     function saveApiUrl() {
-      const inputVal = document.getElementById('input-api-url').value.trim();
-      if (!inputVal) return;
-      state.apiUrl = inputVal;
-      localStorage.setItem('pv_cable_tracker_api_url', inputVal);
-      document.getElementById('api-url-editor').classList.add('hidden');
-      closeSettingsModal();
-      logout();
+      const newUrl = document.getElementById('apiUrlInput').value.trim();
+      if (!newUrl.startsWith('https://script.google.com/')) {
+        showCustomModal("Błąd", "To nie wygląda na poprawny link Google Apps Script.");
+        return;
+      }
+      
+      // 1. Wyczyść stary klucz całkowicie
+      localStorage.removeItem('google_script_url');
+      
+      // 2. Zapisz nowy
+      localStorage.setItem('google_script_url', newUrl);
+      
+      // 3. Wymuś odświeżenie konfiguracji w aplikacji
+      state.apiUrl = newUrl;
+      
+      showCustomModal("Sukces", "Link został zaktualizowany. Aplikacja się przeładuje...", () => {
+        window.location.reload(); // Wymuszenie załadowania nowej konfiguracji
+      });
     }
+
+// Upewnij się, że przy starcie pobierasz link z localStorage:
+    function loadConfig() {
+      const savedUrl = localStorage.getItem('google_script_url');
+      if (savedUrl) {
+        state.apiUrl = savedUrl;
+      }
+    }
+    
+    // Wywołaj loadConfig przy starcie aplikacji (wewnątrz window.onload)
+    window.onload = () => {
+       loadConfig();
+       renderApp();
+    };
     
     function showStatusMessage(text, type = "success") {
       const banner = document.createElement('div');
