@@ -349,7 +349,7 @@
 
   <!-- STOPKA -->
   <footer class="mt-auto py-4 border-t border-zinc-900 bg-zinc-950/80 px-4 text-center">
-    <p class="text-[10px] text-zinc-600">PV Cable Tracker SPA v5.5 • Zabezpieczone</p>
+    <p class="text-[10px] text-zinc-600">PV Cable Tracker SPA v5.6 • Zabezpieczone</p>
   </footer>
 
   <!-- CORE SYSTEM JAVASCRIPT -->
@@ -389,16 +389,14 @@
       window.addEventListener('online', updateNetworkStatus);
       window.addEventListener('offline', updateNetworkStatus);
 
-      // ZAWSZE POKAZUJ POLE API URL. Zapobiega zablokowaniu aplikacji, gdy stary link w localStorage przestał działać.
       document.getElementById('api-url-group').classList.remove('hidden');
       if (state.apiUrl) {
         document.getElementById('login-api-url').value = state.apiUrl;
       }
 
-      // Jeżeli mamy już i PIN i URL, próbujemy zalogować automatycznie w tle
       if (state.apiUrl && state.pin) {
         document.getElementById('login-pin').value = state.pin;
-        document.getElementById('login-modal').classList.add('hidden'); // ukrywamy na czas ładowania
+        document.getElementById('login-modal').classList.add('hidden'); 
         fetchData(true, true); 
       } else {
         document.getElementById('login-modal').classList.remove('hidden');
@@ -435,7 +433,6 @@
         return true;
       }
       
-      // Sprawdź czy PIN pasuje do któregoś teamu z bazy
       if (state.config.pins && state.config.pins[state.pin]) {
         state.role = state.config.pins[state.pin];
         finalizeLogin();
@@ -458,7 +455,7 @@
       }
 
       if (state.role !== 'Admin') {
-        state.selectedTeam = state.role; // Zablokuj na stałe dla teamu
+        state.selectedTeam = state.role; 
       }
       
       startBackgroundSync();
@@ -532,7 +529,6 @@
     }
 
     function generateStringInputs(useExistingConfig = false) {
-      // Pobierz aktualne wartości z inputs jeśli zostały zmienione
       if(!useExistingConfig) {
         const inputs = document.querySelectorAll('.admin-wr-input');
         inputs.forEach(inp => {
@@ -547,7 +543,7 @@
         const trafoNum = trafoName.replace(/[^0-9]/g, "");
         for(let j=1; j<=wrCount; j++) {
           const wrName = `WR ${trafoNum}.${j}`;
-          const currentStrings = state.config.inverterStrings[wrName] || 22; // domyślnie 22
+          const currentStrings = state.config.inverterStrings[wrName] || 22; 
           const div = document.createElement('div');
           div.className = "flex flex-col bg-zinc-950 p-1.5 rounded border border-zinc-800";
           div.innerHTML = `
@@ -561,7 +557,6 @@
     }
 
     function saveAdminConfig() {
-      // Zbierz dane
       state.config.workMode = document.getElementById('cfg-workmode').value;
       state.config.teamsCount = parseInt(document.getElementById('cfg-teamscount').value) || 2;
       
@@ -577,7 +572,6 @@
          state.config.inverterStrings[inp.getAttribute('data-wr')] = parseInt(inp.value) || 0;
       });
 
-      // Wyślij do backendu
       showLoading(true, "Zapisywanie konfiguracji...");
       fetch(state.apiUrl, {
         method: 'POST',
@@ -588,7 +582,7 @@
         if(data.status === "success") {
           showStatusMessage("Konfiguracja zapisana pomyślnie!", "success");
           closeAdminConfigModal();
-          fetchData(true); // przeładowanie
+          fetchData(true); 
         } else {
           showStatusMessage("Błąd zapisu: " + data.message, "error");
         }
@@ -618,7 +612,6 @@
             state.meters = data.meters || [];
             updateNetworkStatus(true);
             
-            // Sprawdzenie czy PIN został usunięty/zmieniony w trakcie pracy
             if(!checkAuthValidQuietly()) {
                 logout();
                 showStatusMessage("Twoje uprawnienia wygasły lub zostały zmienione.", "error");
@@ -660,28 +653,24 @@
     function getCableType(entry) { return entry.Typ_Kabla || "DC"; }
 
     function renderApp() {
-      if(!state.role) return; // Zabezpieczenie przed renderem bez roli
+      if(!state.role) return; 
       
       renderCableTypeSwitcher();
       
-      // Admin widzi krok 1 (wybór zespołu). Zwykły team zostaje uwięziony z pominięciem Kroku 1.
       if (state.role === 'Admin' && !state.selectedTeam) {
         showView('view-step-team');
         renderTeamSelection();
         renderDailyReports();
       } 
-      // Zwykły user lub Admin który już wybrał team
       else if ((state.selectedCableType === "DC" && !state.selectedInverter) || (state.selectedCableType === "AC" && !state.selectedTrafo)) {
         showView('view-step-inverters');
         renderInverterSelection();
       } 
-      // Formularz montera
       else {
         showView('view-step-monter-form');
         safeRenderMonterForm(); 
       }
       
-      // Jeżeli to zwykły team, aktualizuj widok raportów pod kafelkami inwerterów (dodatkowa opcja) lub po prostu blokuj powrót.
       const btnBack = document.getElementById('btn-back-to-teams');
       if (btnBack) {
         if(state.role === 'Admin') btnBack.classList.remove('hidden');
@@ -708,7 +697,7 @@
     function setCableType(type) {
       state.selectedCableType = type;
       if (state.role === 'Admin') {
-          state.selectedTeam = ""; // Reset tylko dla admina
+          state.selectedTeam = ""; 
       }
       state.selectedInverter = "";
       state.selectedTrafo = "";
@@ -736,8 +725,6 @@
     }
 
     function renderDailyReports() {
-      // Zwykły team ma dostęp do raportów tylko na poziomie modala jeśli zrobimy, ale wg wymagań ukrywamy Krok 1.
-      // Wywołujemy to tylko w Krok 1 (czyli tylko Admin).
       const container = document.getElementById('daily-reports-container');
       if(!container) return;
       container.innerHTML = "";
@@ -751,7 +738,6 @@
         const dateStr = getCleanDateString(entry.Data_Wpisu);
         const team = entry.Team || "Brak Zespołu";
         
-        // Zwykły user widzi tylko swoje, Admin widzi wszystko
         if(state.role !== 'Admin' && team !== state.role) return;
 
         const zuzycie = parseFloat(entry.Zuzycie) || 0;
@@ -780,7 +766,15 @@
         let teamBreakdownHTML = "";
         let totalDailySum = 0;
 
-        Object.entries(report[date]).forEach(([teamName, sum]) => {
+        // POPRAWKA: Prawidłowe sortowanie teamów z Administratorem zawsze na samej górze
+        const teamNames = Object.keys(report[date]).sort((a, b) => {
+          if (a === 'Admin') return -1;
+          if (b === 'Admin') return 1;
+          return a.localeCompare(b, undefined, { numeric: true });
+        });
+
+        teamNames.forEach(teamName => {
+          const sum = report[date][teamName];
           totalDailySum += sum;
           teamBreakdownHTML += `
             <div class="flex justify-between items-center text-[11px] pl-2 border-l-2 ${teamName === 'Admin' ? 'border-purple-500/40' : 'border-emerald-500/40'}">
@@ -789,6 +783,7 @@
             </div>
           `;
         });
+
         dateRow.innerHTML = `
           <div class="flex justify-between items-center pb-1.5 border-b border-zinc-900">
             <span class="text-xs font-black text-zinc-200">${date}</span>
@@ -801,7 +796,6 @@
     }
 
     function renderTeamSelection() {
-      // Tylko admin to widzi
       const grandTotalEl = document.getElementById('grand-total-display');
       if (grandTotalEl) grandTotalEl.innerText = `${calculateGrandTotal(state.selectedCableType).toFixed(2)} m`;
       
@@ -817,17 +811,14 @@
       const container = document.getElementById('team-list-container');
       container.innerHTML = "";
       
-      // Tworzenie karty dla Admina (Team 0)
       createTeamCard(container, "Admin", true);
 
-      // Tworzenie kart dla reszty teamów (pobieranych z konfigu arkusza lub bazy)
       const teams = Object.values(state.config.pins || {});
       const uniqueTeams = [...new Set(teams)].sort();
       
       if(uniqueTeams.length > 0) {
           uniqueTeams.forEach(teamName => createTeamCard(container, teamName, false));
       } else {
-          // Fallback jeśli nie ma konfiguracji przypiętej do PINów
           const teamCount = state.config.teamsCount || 2;
           for (let i = 1; i <= teamCount; i++) {
             createTeamCard(container, `Team ${i}`, false);
@@ -894,7 +885,6 @@
     function renderInverterSelection() {
       document.getElementById('selected-team-display').innerText = `${state.selectedTeam} (${state.selectedCableType})`;
       
-      // Zwykły user widzi sumę total, admin sumę konkretnego teamu w który wszedł. Ustalmy, że to jest suma TEAMU dla wybranego kabla.
       document.getElementById('team-total-display').innerText = `${calculateTeamTotal(state.selectedTeam, state.selectedCableType).toFixed(2)} m`;
       
       const filterSection = document.getElementById('trafo-filter-section');
@@ -1027,7 +1017,6 @@
       
       if(!section || !container) return;
       
-      // Admin posiada swój zaawansowany raport w głównym widoku (Krok 1)
       if(state.role === 'Admin') {
         section.classList.add('hidden'); 
         return;
@@ -1050,7 +1039,6 @@
         report[dateStr] += zuzycie;
       });
 
-      // Sortowanie od najnowszych i przycięcie do 4 dni
       const dates = Object.keys(report).sort((a, b) => {
         const partsA = a.split('.'); const partsB = b.split('.');
         if (partsA.length === 3 && partsB.length === 3) {
@@ -1126,62 +1114,103 @@
       const cleanTrafo = state.activeTrafo ? state.activeTrafo.replace(/[^0-9]/g, "") : "1";
       const myTeamNum = state.selectedTeam === 'Admin' ? "0" : (state.selectedTeam.replace(/\D/g, '') || "1");
 
-      let allExisting = state.meters.filter(m => {
+      // 1. Pobieramy rekordy z serwera dla tego widoku
+      let serverEntries = state.meters.filter(m => {
         if (getCableType(m) !== state.selectedCableType) return false;
         if (isDC) return m.Falownik_WR === activeInv;
         return String(m.Trafostacja) === cleanTrafo;
       });
 
-      let otherEntries = allExisting.filter(e => e.Team !== state.selectedTeam);
-      let myEntries = [];
-
+      // 2. Jeśli jesteśmy w trakcie edycji (preserveLocal), zachowujemy to co już wpisaliśmy niezapisanego
+      let mergedPool = [...serverEntries];
       if (preserveLocal && state.localEntries && state.localEntries.length > 0) {
-        myEntries = state.localEntries.filter(e => e.Team === state.selectedTeam);
-      } else {
-        myEntries = allExisting.filter(e => e.Team === state.selectedTeam);
-
-        if (isDC && state.config.workMode === "Bębny") {
-          if (myEntries.length === 0) {
-            myEntries.push(createEmptyRecord(`Bęben #1/${myTeamNum}`, 500));
-          }
-        } else if (isDC && state.config.workMode !== "Bębny") { 
-          const strCount = state.config.inverterStrings[activeInv] || 22; // Dynamicznie z konfiguracji
-          let generatedStrings = [];
-          for (let s = 1; s <= strCount; s++) {
-            const label = `String #${s}/${myTeamNum}`;
-            const found = myEntries.find(e => e.Numer_Bębna_Stringu === label);
-            if (found) { generatedStrings.push(found); } 
-            else { generatedStrings.push(createEmptyRecord(label, 0)); }
-          }
-          myEntries = generatedStrings;
-        } else if (!isDC) { 
-          const wrCount = state.config.trafos[state.activeTrafo] || 12;
-          let generatedAC = [];
-          for (let j = 1; j <= wrCount; j++) {
-            const invName = `WR ${cleanTrafo}.${j}`;
-            const label = `Kabel AC/${myTeamNum}`;
-            const found = myEntries.find(e => e.Falownik_WR === invName);
-            if (found) { generatedAC.push(found); }
-            else {
-              let acRecord = createEmptyRecord(label, 0);
-              acRecord.Falownik_WR = invName;
-              generatedAC.push(acRecord);
-            }
-          }
-          myEntries = generatedAC;
-        }
+          state.localEntries.forEach(localEntry => {
+              if (localEntry.isEdited) {
+                  const idx = mergedPool.findIndex(e => e.ID === localEntry.ID);
+                  if (idx !== -1) mergedPool[idx] = localEntry;
+                  else mergedPool.push(localEntry);
+              }
+          });
       }
 
-      let combined = [...myEntries, ...otherEntries];
-      
-      // Sortowanie - Admin na początku, potem numerycznie/alfabetycznie teamy
-      combined.sort((a, b) => {
-        if(a.Team === b.Team) return 0;
-        if(a.Team === 'Admin') return -1;
-        if(b.Team === 'Admin') return 1;
-        return a.Team.localeCompare(b.Team);
-      });
-      
+      let combined = [];
+
+      // POPRAWKA: Rozdzielenie logiki tworzenia widoku między nieskończonymi Bębnami a Sztywnymi Slotami
+      if (isDC && state.config.workMode === "Bębny") {
+         
+         // W Trybie Bębnów każdy zespół tworzy po prostu nielimitowaną listę swoich rolek - nie ma sztywnych slotów
+         let myEntries = mergedPool.filter(e => e.Team === state.selectedTeam);
+         let otherEntries = mergedPool.filter(e => e.Team !== state.selectedTeam);
+
+         if (myEntries.length === 0) {
+             myEntries.push(createEmptyRecord(`Bęben #1/${myTeamNum}`, 500));
+         }
+
+         combined = [...myEntries, ...otherEntries];
+         combined.sort((a, b) => {
+            if(a.Team === b.Team) return 0;
+            if(a.Team === 'Admin') return -1;
+            if(b.Team === 'Admin') return 1;
+            return (a.Team || "").localeCompare(b.Team || "", undefined, {numeric: true});
+         });
+
+      } else {
+
+         // W Trybach "Stringi" i "Kable AC" generujemy SZTYWNE SLOTY dostępne dla wszystkich. Kto pierwszy, ten lepszy.
+         let usedIds = new Set();
+
+         if (isDC) {
+            // -- Tryb Stringi (DC) --
+            const strCount = state.config.inverterStrings[activeInv] || 22; 
+            
+            for (let s = 1; s <= strCount; s++) {
+               const exactLabel = `String #${s}`;
+               
+               // Szukamy, czy jakikolwiek zespół już "zajął" i zapisał ten string (lub starą zduplikowaną nazwę typu String #1/1)
+               const found = mergedPool.find(e => 
+                  !usedIds.has(e.ID) && 
+                  (e.Numer_Bębna_Stringu === exactLabel || e.Numer_Bębna_Stringu.startsWith(exactLabel + '/'))
+               );
+
+               if (found) {
+                  found.Numer_Bębna_Stringu = exactLabel; // Normalizacja nazwy by wyplenić stare "/1"
+                  combined.push(found);
+                  usedIds.add(found.ID);
+               } else {
+                  // Nikt nie zajął tego slota, więc tworzymy puste miejsce. (Przypisuje się do osoby patrzącej, aż do kliknięcia Zapisz).
+                  combined.push(createEmptyRecord(exactLabel, 0));
+               }
+            }
+         } else {
+            // -- Tryb Kable AC --
+            const wrCount = state.config.trafos[state.activeTrafo] || 12;
+            
+            for (let j = 1; j <= wrCount; j++) {
+               const invName = `WR ${cleanTrafo}.${j}`;
+               
+               // Każdy falownik w Krok 2 (Trafostacje) to dokładnie 1 kabel (1 slot)
+               const found = mergedPool.find(e => 
+                  !usedIds.has(e.ID) && e.Falownik_WR === invName
+               );
+
+               if (found) {
+                  found.Numer_Bębna_Stringu = `Kabel AC`; // Normalizacja
+                  combined.push(found);
+                  usedIds.add(found.ID);
+               } else {
+                  let acRecord = createEmptyRecord(`Kabel AC`, 0);
+                  acRecord.Falownik_WR = invName;
+                  combined.push(acRecord);
+               }
+            }
+         }
+
+         // Wrzucamy na koniec ewentualne sieroty (np. stare pomylone dane, duplikaty String #1/2 z przeszłości) - aby ich nie usunąć bez wiedzy Admina
+         mergedPool.forEach(e => {
+            if (!usedIds.has(e.ID)) combined.push(e);
+         });
+      }
+
       state.localEntries = combined;
 
       if (!preserveLocal) {
@@ -1190,7 +1219,6 @@
     }
 
     function toggleCompletionStatus() {
-      // Tylko team, który przypisał dany inwerter może to zmienić, lub ADMIN
       state.isCompleted = !state.isCompleted;
       state.localEntries.forEach(entry => {
         if (state.role === 'Admin' || entry.Team === state.selectedTeam) {
@@ -1278,8 +1306,8 @@
         itemRow.id = `record-row-${index}`;
         
         const hasActiveData = (entry.isEdited || entry.Zuzycie > 0 || entry.Odczyt_Start > 0 || entry.Odczyt_Koniec > 0);
-        // Admin może edytować wszystko
-        const isMyTeam = (state.role === 'Admin' || !entry.Team || entry.Team === state.selectedTeam);
+        
+        const isMyTeam = (state.role === 'Admin' || entry.Team === state.selectedTeam);
         const dis = isMyTeam ? '' : 'disabled';
         const inpCls = isMyTeam ? 'bg-zinc-900 border-zinc-800 focus:border-emerald-500 text-zinc-200' : 'bg-zinc-900/50 border-amber-900/30 text-amber-500/60 cursor-not-allowed';
 
@@ -1310,6 +1338,7 @@
             </div>
           `;
         } else if (!isMyTeam && state.role !== 'Admin') {
+          // Jeżeli slot nie należy do mojego Teamu, a nie jestem adminem
           borderClass = "border-amber-500/30 bg-amber-950/20 hover:border-amber-500/50 opacity-95";
           headerHTML = `
             <div class="flex items-center gap-2 flex-wrap">
@@ -1318,12 +1347,15 @@
             </div>
           `;
         } else if (!hasActiveData) {
+          // Puste pole czekające na wprowadzenie danych
           borderClass = "border-zinc-800/80 bg-zinc-950/40 hover:border-zinc-700";
           headerHTML = `<div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-xs text-zinc-300 uppercase">${rowLabel}</span>${headerButtonsHTML}</div>`;
-          if(state.role === 'Admin') {
+          // Jeśli admin patrzy na pusty slot przypisany wstępnie do niego
+          if(state.role === 'Admin' && entry.Team && entry.Team !== 'Admin') {
               headerHTML += `<span class="px-2 py-0.5 bg-purple-900/40 text-purple-400 border border-purple-500/30 rounded-md text-[9px] font-bold mt-1 ml-auto">Zespół: ${entry.Team}</span>`;
           }
         } else {
+          // Pole własne wypełnione (lub podgląd przez Admina na dowolny wypełniony slot)
           borderClass = "border-emerald-500/30 bg-zinc-950 hover:border-emerald-500/50";
           headerHTML = `
             <div class="flex items-center gap-2 flex-wrap">
@@ -1350,7 +1382,9 @@
               <button type="button" onclick="swapRecords(${index}, ${index + 1})" class="touch-target w-8 h-8 bg-zinc-950 hover:bg-zinc-800 text-amber-400 border border-zinc-800 rounded-lg flex items-center justify-center transition-all ${!isNextSameTeam ? 'opacity-20 pointer-events-none' : ''}">▼</button>
             </div>
           `;
-        } else if ((isDrumMode && isMyTeam) || state.role === 'Admin') {
+        } else if ((isDrumMode && isMyTeam) || (state.role === 'Admin' && (!isDrumMode ? !hasActiveData : true))) {
+          // Pozwalamy usunąć z widoku tylko Bębny. Dla Stringów można je wyzerować, ale slot sam w sobie musi zostać.
+          // Aby Admin mógł usunąć stare uciążliwe duplikaty, pozwalamy mu tu wcisnąć usuń
           controlSectionHTML = `
             <button type="button" onclick="askRemoveRecordRow(${index})" class="touch-target text-zinc-500 hover:text-red-400 transition-colors">
                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -1453,7 +1487,6 @@
 
     function updateRecordField(index, fieldName, value) {
       const record = state.localEntries[index];
-      // Admin może edytować każdego
       if (state.role !== 'Admin' && record.Team !== state.selectedTeam) return; 
       
       if (fieldName === 'Numer_Bębna_Stringu' || fieldName === 'Falownik_WR') record[fieldName] = value;
@@ -1547,13 +1580,12 @@
     }
 
     function goBackToStep1() {
-      if(state.role !== 'Admin') return; // blokada
+      if(state.role !== 'Admin') return; 
       state.selectedTeam = ""; state.selectedInverter = ""; state.selectedTrafo = "";
       renderApp();
     }
 
     function handleBackFromForm() {
-      // Jeśli jest odliczanie do zapisu, wymuś go natychmiast
       if (autoSaveTimer) {
         clearTimeout(autoSaveTimer);
         autoSaveTimer = null;
@@ -1564,7 +1596,6 @@
         }
       }
       
-      // Blokada i ekran ładowania jeśli zapis wciąż trwa (kluczowe przy szybkim klikaniu/wyjściu)
       if (isSaving || hasPendingSave) {
         showLoading(true, "Zapisywanie przed wyjściem...");
         const waitInterval = setInterval(() => {
@@ -1683,7 +1714,6 @@
 
       const payloadDate = new Date().toLocaleString("pl-PL");
       
-      // Admin zapisuje wszystko co zedytował, Team tylko swoje
       const activeEntries = state.localEntries.filter(e => 
         (state.role === 'Admin' || e.Team === state.selectedTeam) && 
         (e.isEdited || (parseFloat(e.Zuzycie) || 0) > 0 || (parseFloat(e.Odczyt_Start) || 0) > 0 || (parseFloat(e.Odczyt_Koniec) || 0) > 0)
@@ -1762,12 +1792,12 @@
     function saveApiUrl() {
       const inputVal = document.getElementById('input-api-url').value.trim();
       if (!inputVal) return;
-      localStorage.removeItem('pv_cable_tracker_api_url'); // Całkowite czyszczenie starego adresu
-      localStorage.setItem('pv_cable_tracker_api_url', inputVal); // Zapis nowego adresu
+      localStorage.removeItem('pv_cable_tracker_api_url'); 
+      localStorage.setItem('pv_cable_tracker_api_url', inputVal); 
       state.apiUrl = inputVal;
       document.getElementById('api-url-editor').classList.add('hidden');
       closeSettingsModal();
-      window.location.reload(); // Twardy reset dla WebView i GitHub Pages
+      window.location.reload(); 
     }
     
     function showStatusMessage(text, type = "success") {
